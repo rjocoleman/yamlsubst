@@ -1,0 +1,11 @@
+---
+place: World
+foods:
+  - apples
+  - bananas
+  - avocados
+  - pears
+  - carrots
+
+items: foo,bar,baz
+replaceExample: qux-bar-bat

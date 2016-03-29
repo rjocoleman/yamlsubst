@@ -1,0 +1,13 @@
+Hello {{ .place }} it's {{datetime}}.
+
+My favorite foods are {{join .foods ", "}}.
+
+{{$items := split .items ","}}
+{{range $index, $element := $items}}{{$index}}: {{$element}}
+{{end}}
+
+Upper: {{toUpper .place}}
+
+Lower: {{toLower .place}}
+
+{{replace .replaceExample "-" "_" -1}}
