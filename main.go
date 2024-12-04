@@ -1,39 +1,23 @@
-// Copyright © 2016 Robert Coleman <github@robert.net.nz>
-//
-// Permission is hereby granted, free of charge, to any person obtaining a copy
-// of this software and associated documentation files (the "Software"), to deal
-// in the Software without restriction, including without limitation the rights
-// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-// copies of the Software, and to permit persons to whom the Software is
-// furnished to do so, subject to the following conditions:
-//
-// The above copyright notice and this permission notice shall be included in
-// all copies or substantial portions of the Software.
-//
-// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-// THE SOFTWARE.
-
 package main
 
 import (
 	"flag"
-	"io/ioutil"
+	"fmt"
+	"io"
 	"log"
 	"os"
 	"strings"
 	"text/template"
 	"time"
 
-	"gopkg.in/yaml.v2"
+	"gopkg.in/yaml.v3"
 )
 
-var config interface{}
-var yamlFile = flag.String("yaml", "", "YAML file to substitute")
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
 
 var funcMap = template.FuncMap{
 	"split":    strings.Split,
@@ -46,36 +30,50 @@ var funcMap = template.FuncMap{
 }
 
 func main() {
+	yamlFile := flag.String("yaml", "", "YAML file to substitute")
+	showVersion := flag.Bool("version", false, "Show version information")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Printf("yamlsubst %s (commit: %s) built on %s\n", version, commit, date)
+		return
+	}
 
 	if *yamlFile == "" {
 		log.Fatalln("YAML file not found:", *yamlFile)
 	}
 
-	input, err := ioutil.ReadAll(os.Stdin)
-	if err != nil {
+	if err := processTemplate(*yamlFile, os.Stdin, os.Stdout); err != nil {
 		log.Fatal(err)
+	}
+}
+
+func processTemplate(yamlPath string, input io.Reader, output io.Writer) error {
+	// Read input template
+	yamlContent, err := os.ReadFile(yamlPath)
+	if err != nil {
+		return err
 	}
 
-	yamlFileContent, err := ioutil.ReadFile(*yamlFile)
-	if err != nil {
-		log.Fatal(err)
+	// Parse YAML
+	var config interface{}
+	if err := yaml.Unmarshal(yamlContent, &config); err != nil {
+		return err
 	}
 
-	err = yaml.Unmarshal(yamlFileContent, &config)
+	// Read template content
+	templateContent, err := io.ReadAll(input)
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	tmpl, err := template.New("template").Funcs(funcMap).Parse(string(input))
+	// Parse and execute template
+	tmpl, err := template.New("template").Funcs(funcMap).Parse(string(templateContent))
 	if err != nil {
-		log.Fatal(err)
+		return err
 	}
 
-	err = tmpl.Execute(os.Stdout, &config)
-	if err != nil {
-		log.Fatal(err)
-	}
+	return tmpl.Execute(output, &config)
 }
 
 func interfaceJoiner(a []interface{}, sep string) string {
@@ -83,6 +81,5 @@ func interfaceJoiner(a []interface{}, sep string) string {
 	for i, v := range a {
 		s[i] = v.(string)
 	}
-
 	return strings.Join(s, sep)
 }
