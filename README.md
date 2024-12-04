@@ -4,6 +4,8 @@ Takes YAML from a specified file and substitutes into a template from `stdin`, o
 
 Templates are written in Go's [`text/template`](http://golang.org/pkg/text/template/).
 
+Also as a Docker image: `ghcr.io/rjocoleman/yamlsubst`
+
 ### Example Usage:
 
 `yamlsubst -yaml nginx.conf.yml < nginx.conf.template > /etc/nginx/nginx.conf`
